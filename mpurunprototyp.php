@@ -1,5 +1,7 @@
 <?php
 
+// NOTE: only prototyp for my tests, without threading
+
 $mprunner = new Mprunner();
 $mprunner->run();
 
