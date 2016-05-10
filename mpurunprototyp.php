@@ -11,6 +11,7 @@ class Mprunner {
 
 
     const FOLDER = './portal_test/unit/afield';
+    //const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator/Zend';
     const FOLDER_SEPARATOR = '/';
 
     const DEFAULT_EXEC_TIME = '5';
@@ -23,30 +24,60 @@ class Mprunner {
 
     public function run() {
 
-        $fileTree = new Mputree($this->_path);
+        $tree = new Mputree($this->_path);
 
-        $this->_prepareFileTree($this->_path, $fileTree);
+        $this->_prepareFileTree($this->_path, $tree);
 
-        //var_export($fileTree);
-        $this->_runUnits($fileTree);
+        $this->_preprocessTree($tree);
+        $tests = $this->_getTestsArray($tree);
+
+        $this->_runUnits($tests);
     }
 
-    private function _runUnits($tree) {
+    private function _runUnits(array $tests) {
         $stop = 1;
 
         $i = 0;
 
-        foreach ($tree->getNodes() as $nodes) {
-            foreach ($nodes as $node) {
-                var_dump($node->getFullPath());
-                exec(escapeshellcmd('phpunit '. $node->getFullPath()).'&', $result);
+        foreach ($tests as $test) {
+            // todo THREADS, need download
+            exec(escapeshellcmd('phpunit '. $test).'&', $result);
 
-                if ($i++ == $stop) {
-                    var_export($result);
-                    break;
-                }
+            if ($i++ == $stop) {
+                var_export($result);
+                break;
             }
         }
+    }
+
+
+    // TODO -> make sorted array according exec times
+    private function _getTestsArray($tree) {
+        $tests = array();
+
+        // todo -> implement this
+        return $tests;
+    }
+
+    // to set folder times to folders
+    private function _preprocessTree($node) {
+        $subnodes = $node->getNodes();
+
+        if ($subnodes) {
+            $totalExecCount = 0;
+
+            foreach ($subnodes as $subnode) {
+                $execCount = $this->_preprocessTree($subnode);
+                $totalExecCount += $execCount;
+            }
+
+            $node->setExecTime($totalExecCount);
+            $execCount = $totalExecCount;
+        } else {
+            $execCount = $node->getExecTime();
+        }
+
+        return $execCount;
     }
 
     private function _prepareFileTree($path, $tree) {
@@ -56,11 +87,13 @@ class Mprunner {
             $fullPath = $path . self::FOLDER_SEPARATOR . $file;
 
             if (is_dir($fullPath)) {
-                // TODO -> add support for save paths -> then is posible run units for whole path
-                //$newTree = new Mputree($fullPath);
+                $newTree = new Mputree($fullPath);
 
-                $this->_prepareFileTree($fullPath, $tree);
+                $tree->addNode($newTree);
+
+                $this->_prepareFileTree($fullPath, $newTree);
             } else {
+                // todo -> check for php files + then filter empty folders
                 $newTree = new Mputree($fullPath);
                 $newTree->setFilename($file);
                 $newTree->setExecTime(self::DEFAULT_EXEC_TIME);
@@ -93,13 +126,13 @@ class Mprunner {
 }
 
 class Mputree {
-    private $_nodes = null;
+    private $_nodes = array();
 
     private $_fullPath = null;
     private $_filename = null;
 
     private $_execTimeRating = null;
-    private $_pathExecTime   = null;
+    private $_execTime       = null;
 
     public function __construct($fullPath) {
         $this->_fullPath = $fullPath;
@@ -126,7 +159,11 @@ class Mputree {
     }
 
     public function addNode(Mputree $node) {
-        $this->_nodes[$this->_fullPath][] = $node;
+        $this->_nodes[] = $node;
+    }
+
+    public function getExecTime() {
+        return $this->_execTime;
     }
 
     public function getNodes() {
