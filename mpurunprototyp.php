@@ -10,8 +10,8 @@ class Mprunner {
     const THREAD_COUNT_MAIN = 2;
 
 
-    const FOLDER = './portal_test/unit/afield';
-    //const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator/Zend';
+    //const FOLDER = './portal_test/unit/afield';
+    const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator/Zend';
     const FOLDER_SEPARATOR = '/';
 
     const DEFAULT_EXEC_TIME = '5';
@@ -29,9 +29,10 @@ class Mprunner {
         $this->_prepareFileTree($this->_path, $tree);
 
         $this->_preprocessTree($tree);
-        $tests = $this->_getTestsArray($tree);
+        $tests = $this->_getTestsArray($tree, true);
 
         $this->_runUnits($tests);
+
     }
 
     private function _runUnits(array $tests) {
@@ -41,10 +42,12 @@ class Mprunner {
 
         foreach ($tests as $test) {
             // todo THREADS, need download
-            exec(escapeshellcmd('phpunit '. $test).'&', $result);
+            $command = escapeshellcmd('phpunit '. $test).'&';
+            exec($command, $result);
+
+            var_export($result);
 
             if ($i++ == $stop) {
-                var_export($result);
                 break;
             }
         }
@@ -52,14 +55,33 @@ class Mprunner {
 
 
     // TODO -> make sorted array according exec times
-    private function _getTestsArray($tree) {
+    private function _getTestsArray($tree, $onlyDir=false) {
         $tests = array();
 
-        // todo -> implement this
+        $subnodes = $tree->getNodes();
+
+        if ($subnodes) {
+            foreach ($subnodes as $subnode) {
+                $subtests = $this->_getTestsArray($subnode, $onlyDir);
+
+                if ($onlyDir) {
+                    $dirtest[] = $tree->getFullPath();
+                    $tests = array_merge($dirtest, $tests);
+                } else {
+                    $tests = array_merge($subtests, $tests);
+                }
+            }
+        } else {
+            if (!$onlyDir) {
+                $tests[] = $tree->getFullPath();
+            }
+        }
+
         return $tests;
     }
 
     // to set folder times to folders
+    // TODO = filter empty folders, if there are?
     private function _preprocessTree($node) {
         $subnodes = $node->getNodes();
 
@@ -93,14 +115,27 @@ class Mprunner {
 
                 $this->_prepareFileTree($fullPath, $newTree);
             } else {
-                // todo -> check for php files + then filter empty folders
-                $newTree = new Mputree($fullPath);
-                $newTree->setFilename($file);
-                $newTree->setExecTime(self::DEFAULT_EXEC_TIME);
+                if ($this->_isPhpFile($file)) {
+                    $newTree = new Mputree($fullPath);
+                    $newTree->setFilename($file);
+                    $newTree->setExecTime(self::DEFAULT_EXEC_TIME);
 
-                $tree->addNode($newTree);
+                    $tree->addNode($newTree);
+                }
             }
         }
+    }
+
+    private function _isPhpFile($name) {
+        $result = false;
+
+        $pos = strpos($name, '.php');
+
+        if ($pos !== false && strlen($name) - $pos == 4) {
+            $result = true;
+        }
+
+        return $result;
     }
 
     /**
@@ -172,5 +207,9 @@ class Mputree {
 
     public function getFullPath() {
         return $this->_fullPath;
+    }
+
+    public function getFilename() {
+        return $this->_filename;
     }
 }
