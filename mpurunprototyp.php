@@ -11,7 +11,8 @@ class Mprunner {
 
 
     //const FOLDER = './portal_test/unit/afield';
-    const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator/Zend';
+    const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator';
+    //const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator/Zend';
     const FOLDER_SEPARATOR = '/';
 
     const DEFAULT_EXEC_TIME = '5';
@@ -29,14 +30,16 @@ class Mprunner {
         $this->_prepareFileTree($this->_path, $tree);
 
         $this->_preprocessTree($tree);
+
         $tests = $this->_getTestsArray($tree, true);
 
-        $this->_runUnits($tests);
+        var_export($tests);
 
+        //$this->_runUnits($tests);
     }
 
     private function _runUnits(array $tests) {
-        $stop = 1;
+        $stop = 3;
 
         $i = 0;
 
@@ -55,21 +58,21 @@ class Mprunner {
 
 
     // TODO -> make sorted array according exec times
+    // think about better array keys -> because of recognize fast the subfolders (maybe keep the tree for running?)
     private function _getTestsArray($tree, $onlyDir=false) {
         $tests = array();
 
         $subnodes = $tree->getNodes();
 
         if ($subnodes) {
+            if ($onlyDir) {
+                $tests[] = $tree->getFullPath();
+            }
+
             foreach ($subnodes as $subnode) {
                 $subtests = $this->_getTestsArray($subnode, $onlyDir);
 
-                if ($onlyDir) {
-                    $dirtest[] = $tree->getFullPath();
-                    $tests = array_merge($dirtest, $tests);
-                } else {
-                    $tests = array_merge($subtests, $tests);
-                }
+                $tests = array_merge($subtests, $tests);
             }
         } else {
             if (!$onlyDir) {
