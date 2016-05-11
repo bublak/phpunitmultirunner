@@ -1,6 +1,6 @@
 <?php
 
-// NOTE: only prototyp for my tests, without threading
+// NOTE: only prototyp for my tests
 
 $mprunner = new Mprunner();
 $mprunner->run();
@@ -10,8 +10,8 @@ class Mprunner {
     const THREAD_COUNT_MAIN = 2;
 
 
-    //const FOLDER = './portal_test/unit/afield';
-    const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator';
+    const FOLDER = './portal_test/unit/afield';
+    //const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator';
     //const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator/Zend';
     const FOLDER_SEPARATOR = '/';
 
@@ -24,6 +24,8 @@ class Mprunner {
     }
 
     public function run() {
+        echo "\ncreate file trees: \n";
+        echo date('i:s', time());
 
         $tree = new Mputree($this->_path);
 
@@ -31,29 +33,77 @@ class Mprunner {
 
         $this->_preprocessTree($tree);
 
-        $tests = $this->_getTestsArray($tree, true);
+        $tests = $this->_getTestsArray($tree, false);
 
-        var_export($tests);
+        echo 'created file trees: \n';
+        echo "\nrunning tests: \n";
+        echo date('i:s', time());
 
-        //$this->_runUnits($tests);
+        $this->_runUnits($tests);
+
+        echo "\nfinished tests (3 still running): \n";
+        echo date('i:s', time());
     }
 
+    // TODO refactore this
     private function _runUnits(array $tests) {
+
+        $bootstraps_init = array(
+            'a' => ' --bootstrap="/iw/workspace/00701bparalel/portal_test/TestPreloadC.php" ',
+            'b' => ' --bootstrap="/iw/workspace/00701bparalel/portal_test/TestPreloadD.php" ',
+            //'c' => ' --bootstrap="/iw/workspace/00701bparalel/portal_test/TestPreloadE.php" '
+        );
+
+        $bootstraps = $bootstraps_init;
+
+        while (count($tests) > 0) {
+            if (count($bootstraps) == 0) {
+                //TODO -> make it better -> because this waits for last process ending in group
+                while (pcntl_waitpid(0, $status) != -1) {
+                    $status = pcntl_wexitstatus($status);
+                    //echo "Child $status completed\n";
+                }
+
+                $bootstraps = $bootstraps_init;
+            }
+
+            $boot = array_pop($bootstraps);
+
+            $test = array_pop($tests);
+
+            //$command = escapeshellcmd('phpunit '. $boot . $test);
+            $command = 'phpunit '. $boot . $test;
+            //var_dump($command);
+
+            $pid = pcntl_fork();
+            if (!$pid) {
+                exec($command, $result);
+
+                // TODO -> how process result messages - print only errors immediately
+                //echo(implode($result, "\n"));
+                exit($pid);
+            }
+        }
+
         $stop = 3;
 
         $i = 0;
 
-        foreach ($tests as $test) {
-            // todo THREADS, need download
-            $command = escapeshellcmd('phpunit '. $test).'&';
-            exec($command, $result);
+        //foreach ($tests as $test) {
+            //$command = escapeshellcmd('phpunit '. $bootstraps['a'] . $test).'&';
 
-            var_export($result);
+            //$pid = pcntl_fork();
+            //if (!$pid) {
+                //exec($command, $result);
+                //var_export($result);
+                //exit($pid);
+            //}
 
-            if ($i++ == $stop) {
-                break;
-            }
-        }
+
+            //if ($i++ == $stop) {
+                //break;
+            //}
+        //}
     }
 
 
