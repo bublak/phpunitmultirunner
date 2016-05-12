@@ -35,13 +35,13 @@ class Mprunner {
 
         $tests = $this->_getTestsArray($tree, false);
 
-        echo 'created file trees: \n';
-        echo "\nrunning tests: \n";
+        echo "created file trees: \n";
+        echo "running tests: \n";
         echo date('i:s', time());
 
         $this->_runUnits($tests);
 
-        echo "\nfinished tests (3 still running): \n";
+        echo "\nfinished tests \n";
         echo date('i:s', time());
     }
 
@@ -54,58 +54,75 @@ class Mprunner {
             //'c' => ' --bootstrap="/iw/workspace/00701bparalel/portal_test/TestPreloadE.php" '
         );
 
-        $bootstraps = $bootstraps_init;
+        $bootstraps   = $bootstraps_init;
+        $bootFreeKeys = array_keys($bootstraps);
 
-        while (count($tests) > 0) {
-            if (count($bootstraps) == 0) {
-                //TODO -> make it better -> because this waits for last process ending in group
-                while (pcntl_waitpid(0, $status) != -1) {
-                    $status = pcntl_wexitstatus($status);
-                    //echo "Child $status completed\n";
-                }
+        $processes = array();
 
-                $bootstraps = $bootstraps_init;
-            }
+        // first requested count of processes
+        $i = 0;
+        while ($i++ < count($bootstraps)) {
+            $test        = array_pop($tests);
+            $bootFreeKey = array_pop($bootFreeKeys);
 
-            $boot = array_pop($bootstraps);
+            $boot = $bootstraps[$bootFreeKey];
 
-            $test = array_pop($tests);
-
-            //$command = escapeshellcmd('phpunit '. $boot . $test);
-            $command = 'phpunit '. $boot . $test;
-            //var_dump($command);
+            $command = escapeshellcmd('phpunit '. $boot . $test);
 
             $pid = pcntl_fork();
+
             if (!$pid) {
+                //echo "child forked\n";
+                echo "processing command: $command\n";
                 exec($command, $result);
 
                 // TODO -> how process result messages - print only errors immediately
+                //var_dump($result);
                 //echo(implode($result, "\n"));
-                exit($pid);
+                exit();
+            } else {
+                //echo "created $pid\n";
+                //var_dump($bootFreeKeys);
+                $processes[$pid] = $bootFreeKey;
             }
         }
 
-        $stop = 3;
+        // then if some of processes ends, start new with the same bootstrap
+        while (($processId = pcntl_waitpid(-1, $status)) != -1) {
+            if (count($tests)) {
+                $test        = array_pop($tests);
+                $bootFreeKey = $processes[$processId];
 
-        $i = 0;
+                $boot = $bootstraps[$bootFreeKey];
 
-        //foreach ($tests as $test) {
-            //$command = escapeshellcmd('phpunit '. $bootstraps['a'] . $test).'&';
+                $command = escapeshellcmd('phpunit '. $boot . $test);
 
-            //$pid = pcntl_fork();
-            //if (!$pid) {
-                //exec($command, $result);
-                //var_export($result);
-                //exit($pid);
-            //}
+                $pid = pcntl_fork();
 
+                if (!$pid) {
+                    //echo "child forked\n";
+                    echo "processing command: $command\n";
+                    exec($command, $result);
 
-            //if ($i++ == $stop) {
-                //break;
-            //}
-        //}
+                    // TODO -> how process result messages - print only errors immediately
+                    //var_dump($result);
+                    exit();
+                } else {
+                    //echo "created $pid\n";
+                    //var_dump($bootFreeKeys);
+                    $processes[$pid] = $bootFreeKey;
+                }
+
+                //echo "child ends $processId\n";
+
+                // return bootstrap
+                unset($processes[$processId]);
+
+                $status = pcntl_wexitstatus($status);
+            }
+        }
+
     }
-
 
     // TODO -> make sorted array according exec times
     // think about better array keys -> because of recognize fast the subfolders (maybe keep the tree for running?)
