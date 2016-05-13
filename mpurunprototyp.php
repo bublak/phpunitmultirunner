@@ -2,51 +2,59 @@
 
 // NOTE: only prototyp for my tests
 
-$mprunner = new Mprunner();
-$mprunner->run();
+$startBasic = new Basic();
+$startBasic->run();
 
-class Mprunner {
+
+class BasicEngine {
+
+    public function runUnits(array $tests) {
+        foreach ($tests as $test) {
+            $command = escapeshellcmd('phpunit '. $test);
+            exec($command, $result);
+        }
+    }
+}
+
+// todo
+interface IEngine {
+    public function runUnits(array $tests, array $options=null);
+}
+
+
+class Basic {
+
+    public function run() {
+        $folder = $_SERVER['PWD'] . EnvSettings::FOLDER_SEPARATOR . EnvSettings::FOLDER;
+
+        $engine = new BasicEngine();
+
+        $mprunner = new Mprunner($engine, $folder);
+        $mprunner->run();
+    }
+}
+
+//[TODO, do some PRinter
+//    AND Timer (timer will work only for one thread)
+//    AND saver/loader of measured times
+
+class EnvSettings {
+    const FOLDER_SEPARATOR = '/';
     const THREAD_COUNT = 3;
     const THREAD_COUNT_MAIN = 2;
 
-
-    const FOLDER = './portal_test/unit/afield';
-    //const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator';
+    //const FOLDER = './portal_test/unit/afield';
+    const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator';
     //const FOLDER = './portal_test/unit/afield/impl/IW/AField/Core/Validator/Zend';
-    const FOLDER_SEPARATOR = '/';
+}
 
-    const DEFAULT_EXEC_TIME = '5';
 
-    private $_path = '';
-
-    public function __construct() {
-        $this->_path = $_SERVER['PWD'] . self::FOLDER_SEPARATOR . self::FOLDER;
-    }
-
-    public function run() {
-        echo "\ncreate file trees: \n";
-        echo date('i:s', time());
-
-        $tree = new Mputree($this->_path);
-
-        $this->_prepareFileTree($this->_path, $tree);
-
-        $this->_preprocessTree($tree);
-
-        $tests = $this->_getTestsArray($tree, false);
-
-        echo "created file trees: \n";
-        echo "running tests: \n";
-        echo date('i:s', time());
-
-        $this->_runUnits($tests);
-
-        echo "\nfinished tests \n";
-        echo date('i:s', time());
-    }
-
+// todo implements Engine
+class MultiprocessEngine {
     // TODO refactore this
-    private function _runUnits(array $tests) {
+    // TODO ->  need to save measured times to be possible: see next todo:
+    // TODO -> start process for the one of the slowest test and in other process for example 10 of the fastest unit tests
+    public function runUnits(array $tests, $options) {
 
         $bootstraps_init = array(
             'a' => ' --bootstrap="/iw/workspace/00701bparalel/portal_test/TestPreloadC.php" ',
@@ -121,7 +129,43 @@ class Mprunner {
                 $status = pcntl_wexitstatus($status);
             }
         }
+    }
+}
 
+class Mprunner {
+
+    const FOLDER_SEPARATOR = '/';
+    const DEFAULT_EXEC_TIME = '5';
+
+    private $_path   = '';
+    private $_engine = null;
+
+    // todo interface Engine
+    public function __construct($engine, $folder) {
+        $this->_path = $folder;
+        $this->_engine = $engine;
+    }
+
+    public function run() {
+        echo "\ncreate file trees: \n";
+        echo date('i:s', time());
+
+        $tree = new Mputree($this->_path);
+
+        $this->_prepareFileTree($this->_path, $tree);
+
+        $this->_preprocessTree($tree);
+
+        $tests = $this->_getTestsArray($tree, false);
+
+        echo "created file trees: \n";
+        echo "running tests: \n";
+        echo date('i:s', time());
+
+        $this->_engine->runUnits($tests);
+
+        echo "\nfinished tests \n";
+        echo date('i:s', time());
     }
 
     // TODO -> make sorted array according exec times
@@ -176,7 +220,7 @@ class Mprunner {
         $data = $this->_getDirContent($path);
 
         foreach ($data as $file) {
-            $fullPath = $path . self::FOLDER_SEPARATOR . $file;
+            $fullPath = $path . EnvSettings::FOLDER_SEPARATOR . $file;
 
             if (is_dir($fullPath)) {
                 $newTree = new Mputree($fullPath);
