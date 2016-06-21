@@ -1,5 +1,7 @@
 <?php
 
+namespace bublak\phpunitmultirunner\Tree;
+
 class Mputree {
     private $_nodes = array();
 
@@ -35,6 +37,10 @@ class Mputree {
 
     public function addNode(Mputree $node) {
         $this->_nodes[] = $node;
+    }
+
+    public function getExecTimeRating() {
+        return $this->_execTimeRating;
     }
 
     public function getExecTime() {

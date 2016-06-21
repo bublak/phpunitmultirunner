@@ -1,0 +1,21 @@
+{
+    "name": "bublak/phpunitmultirunner",
+    "description": "used for run php unit multiprocessed",
+    "license": "MIT",
+    "keywords": ["phpunitmultirunner"],
+    "authors": [
+        {
+            "name": "Bublak",
+            "email": "name@domain.com"
+        }
+    ],
+    "require": {},
+    "require-dev": {
+        "phpunit/phpunit": "4.8.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "bublak\\phpunitmultirunner\\": "src"
+        }
+    }
+}
