@@ -1,11 +1,6 @@
 <?php
+namespace bublak\phpunitmultirunner\Engines;
 
-class BasicEngine {
+class Basic extends AbstractEngine {
 
-    public function runUnits(array $tests) {
-        foreach ($tests as $test) {
-            $command = escapeshellcmd('phpunit '. $test);
-            exec($command, $result);
-        }
-    }
 }
