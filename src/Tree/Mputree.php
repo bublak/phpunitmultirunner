@@ -5,14 +5,16 @@ namespace bublak\phpunitmultirunner\Tree;
 class Mputree {
     private $_nodes = array();
 
+    private $_isRoot   = false;
     private $_fullPath = null;
     private $_filename = null;
 
     private $_execTimeRating = null;
     private $_execTime       = null;
 
-    public function __construct($fullPath) {
+    public function __construct($fullPath, $isRoot=false) {
         $this->_fullPath = $fullPath;
+        $this->_isRoot = $isRoot;
     }
 
     public function setFullPath($path) {
@@ -59,12 +61,17 @@ class Mputree {
         return $this->_filename;
     }
 
-    public function load($file) {
-        //[TODO, pavel.filipcik@intraworlds.com, B] do this
-    }
-
     public function save($file) {
-        //[TODO, pavel.filipcik@intraworlds.com, B] do this
-        // jen pro root prvek
+        if ($this->_isRoot === TRUE) {
+            $res = serialize($this);
+
+            $fileHandler = fopen($file, 'w');
+            fwrite($fileHandler, $res);
+            fclose($fileHandler);
+        } else {
+            return false;
+        }
+
+        return true;
     }
 }

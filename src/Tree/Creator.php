@@ -14,7 +14,7 @@ class Creator {
     }
 
     public function getTree() {
-        $tree = new Mputree($this->_path);
+        $tree = new Mputree($this->_path, true);
 
         $this->_prepareFileTree($this->_path, $tree);
 
@@ -28,6 +28,24 @@ class Creator {
         $tests = $this->_getTestsArray($tree, false);
 
         return $tests;
+    }
+
+    public function load($file) {
+        $fileHandler = fopen($file, 'r');
+
+        if ($fileHandler === false) {
+            throw new \Exception('Unable to open file: '.$file);
+        }
+
+        $data = fgets($fileHandler);
+
+        fclose($fileHandler);
+
+        return unserialize($data);
+    }
+
+    public function save($file, $tree) {
+        return $tree->save($file);
     }
 
     // to set folder times to folders
