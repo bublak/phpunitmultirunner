@@ -1,83 +1,94 @@
 <?php
+namespace bublak\phpunitmultirunner\Engines;
 
-class MultiprocessEngine {
-    // TODO refactore this
-    // TODO ->  need to save measured times to be possible: see next todo:
-    // TODO -> start process for the one of the slowest test and in other process for example 10 of the fastest unit tests
-    public function runUnits(array $tests, $options) {
+use bublak\phpunitmultirunner\Engines\Executors\IExecutor;
 
-        $bootstraps_init = array(
-            'a' => ' --bootstrap="/iw/workspace/00701bparalel/portal_test/TestPreloadC.php" ',
-            'b' => ' --bootstrap="/iw/workspace/00701bparalel/portal_test/TestPreloadD.php" ',
-            //'c' => ' --bootstrap="/iw/workspace/00701bparalel/portal_test/TestPreloadE.php" '
-        );
 
-        $bootstraps   = $bootstraps_init;
-        $bootFreeKeys = array_keys($bootstraps);
+class Multiprocess extends AbstractEngine
+{
 
-        $processes = array();
+    public function runUnits(array $tests, array $options=null) {
+        $file = 'ble.txt';
 
-        // first requested count of processes
-        $i = 0;
-        while ($i++ < count($bootstraps)) {
-            $test        = array_pop($tests);
-            $bootFreeKey = array_pop($bootFreeKeys);
+        if (file_exists($file)) {
+            unlink($file);
+        }
 
-            $boot = $bootstraps[$bootFreeKey];
 
-            $command = escapeshellcmd('phpunit '. $boot . $test);
+        $fileHandler = fopen($file, 'w+');
+        fclose($fileHandler);
+
+        $results = array();
+
+        $bootstraps = $this->_getBootstraps($options);
+
+        $bootstrapsKeys = array_keys($bootstraps);
+
+        $hasEnoughTests = count($bootstraps) > count($tests) ? false : true;
+
+        while (!$hasEnoughTests) {
+            array_pop($bootstraps);
+
+            $hasEnoughTests = count($bootstraps) > count($tests) ? false : true;
+        }
+
+        foreach ($bootstraps as $boostrap) {
+            $testChunk = array_pop($tests);
 
             $pid = pcntl_fork();
 
             if (!$pid) {
-                //echo "child forked\n";
-                echo "processing command: $command\n";
-                exec($command, $result);
+                $result = parent::runUnits($testChunk, array());
 
-                // TODO -> how process result messages - print only errors immediately
-                //var_dump($result);
-                //echo(implode($result, "\n"));
-                exit();
-            } else {
-                //echo "created $pid\n";
-                //var_dump($bootFreeKeys);
-                $processes[$pid] = $bootFreeKey;
+                $fileHandler = fopen($file, 'w+');
+
+                flock($fileHandler, LOCK_EX);
+
+                $existingResults = $this->_load($file);
+
+                //while(!feof($fileHandler)) {
+                    //$existingResults = $existingResults.unserialize(fgets($fileHandler));
+                //}
+
+                $allResults = is_array($existingResults) ? array_merge($existingResults, $result) : $result;
+                $res        = serialize($allResults);
+
+                fwrite($fileHandler, $res);
+                fflush($fileHandler);
+
+                flock($fileHandler, LOCK_UN);
+                fclose($fileHandler);
+
+                exit($pid);
             }
         }
 
-        // then if some of processes ends, start new with the same bootstrap
-        while (($processId = pcntl_waitpid(-1, $status)) != -1) {
-            if (count($tests)) {
-                $test        = array_pop($tests);
-                $bootFreeKey = $processes[$processId];
-
-                $boot = $bootstraps[$bootFreeKey];
-
-                $command = escapeshellcmd('phpunit '. $boot . $test);
-
-                $pid = pcntl_fork();
-
-                if (!$pid) {
-                    //echo "child forked\n";
-                    echo "processing command: $command\n";
-                    exec($command, $result);
-
-                    // TODO -> how process result messages - print only errors immediately
-                    //var_dump($result);
-                    exit();
-                } else {
-                    //echo "created $pid\n";
-                    //var_dump($bootFreeKeys);
-                    $processes[$pid] = $bootFreeKey;
-                }
-
-                //echo "child ends $processId\n";
-
-                // return bootstrap
-                unset($processes[$processId]);
-
-                $status = pcntl_wexitstatus($status);
-            }
+        while (pcntl_waitpid(0, $status) != -1) {
         }
+
+        //load results
+        $results = $this->_load($file);
+
+        return $results;
+    }
+
+    private function _getBootstraps($options) {
+        return is_array($options['bootstraps']) ? $options['bootstraps'] : array();
+    }
+
+    private function _load($file) {
+        $fileHandler = fopen($file, 'r');
+
+        if ($fileHandler === false) {
+            throw new \Exception('Unable to open file: '.$file);
+        }
+
+        while(!feof($fileHandler)) {
+            $data = $data.fgets($fileHandler);
+        }
+
+        fclose($fileHandler);
+
+        return unserialize($data);
     }
 }
