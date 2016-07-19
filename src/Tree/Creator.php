@@ -8,9 +8,12 @@ use bublak\phpunitmultirunner\Settings;
 class Creator {
 
     private $_path = '';
+    private $_sorter = null;
 
-    public function __construct($fullPath) {
+    public function __construct($fullPath, $sorter=null) {
         $this->_path = $fullPath;
+
+        $this->_sorter = $sorter;
     }
 
     public function getTree() {
@@ -26,6 +29,9 @@ class Creator {
     public function getTreeArray() {
         $tree = $this->getTree();
         $tests = $this->_getTestsArray($tree, false);
+
+        // TODO missing tests
+        $this->_sortTestsForProcesses($tests);
 
         return $tests;
     }
@@ -46,6 +52,12 @@ class Creator {
 
     public function save($file, $tree) {
         return $tree->save($file);
+    }
+
+    private function _sortTestsForProcesses($tests) {
+        if (!is_null($this->_sorter)) {
+            $this->_sorter->sort($tests);
+        }
     }
 
     // to set folder times to folders
