@@ -62,11 +62,13 @@ class Multiprocess extends AbstractEngine
             }
         }
 
-        while (pcntl_waitpid(0, $status) != -1) {
-        }
+        if (count($bootstraps )) {
+            while (pcntl_waitpid(0, $status) != -1) {
+            }
 
-        //load results
-        $results = $this->_loadFileContent($file);
+            //load results
+            $results = $this->_loadFileContent($file);
+        }
 
         return $results;
     }
