@@ -10,12 +10,13 @@ class Multiprocess extends AbstractEngine
     public function runUnits(array $tests, array $options=null) {
         $file = 'ble.txt';
 
+        $fileHandler = fopen($file, 'r+');
+
         if (file_exists($file)) {
-            unlink($file);
+            // delete content of file
+            ftruncate($fileHandler, 0);
         }
 
-
-        $fileHandler = fopen($file, 'w+');
         fclose($fileHandler);
 
         $results = array();
@@ -40,23 +41,21 @@ class Multiprocess extends AbstractEngine
             if (!$pid) {
                 $result = parent::runUnits($testChunk, array());
 
-                $fileHandler = fopen($file, 'w+');
+                $fileHandler = fopen($file, 'r+');
 
-                flock($fileHandler, LOCK_EX);
+                if (flock($fileHandler, LOCK_EX)) {  // acquire an exclusive lock
+                    $existingResults = unserialize($this->_readDataFromFileHandler($fileHandler));
 
-                $existingResults = $this->_load($file);
+                    $allResults = is_array($existingResults) ? array_merge($existingResults, $result) : $result;
+                    $res        = serialize($allResults);
 
-                //while(!feof($fileHandler)) {
-                    //$existingResults = $existingResults.unserialize(fgets($fileHandler));
-                //}
+                    ftruncate($fileHandler, 0);
+                    rewind($fileHandler);
+                    fwrite($fileHandler, $res);
+                    fflush($fileHandler);            // flush output before releasing the lock
+                    flock($fileHandler, LOCK_UN);    // release the lock
+                }
 
-                $allResults = is_array($existingResults) ? array_merge($existingResults, $result) : $result;
-                $res        = serialize($allResults);
-
-                fwrite($fileHandler, $res);
-                fflush($fileHandler);
-
-                flock($fileHandler, LOCK_UN);
                 fclose($fileHandler);
 
                 exit($pid);
@@ -67,7 +66,7 @@ class Multiprocess extends AbstractEngine
         }
 
         //load results
-        $results = $this->_load($file);
+        $results = $this->_loadFileContent($file);
 
         return $results;
     }
@@ -76,19 +75,27 @@ class Multiprocess extends AbstractEngine
         return is_array($options['bootstraps']) ? $options['bootstraps'] : array();
     }
 
-    private function _load($file) {
+    private function _loadFileContent($file) {
         $fileHandler = fopen($file, 'r');
 
+        $data = $this->_readDataFromFileHandler($fileHandler);
+
+        fclose($fileHandler);
+
+        return unserialize($data);
+    }
+
+    private function _readDataFromFileHandler($fileHandler) {
         if ($fileHandler === false) {
             throw new \Exception('Unable to open file: '.$file);
         }
+
+        $data = '';
 
         while(!feof($fileHandler)) {
             $data = $data.fgets($fileHandler);
         }
 
-        fclose($fileHandler);
-
-        return unserialize($data);
+        return $data;
     }
 }
