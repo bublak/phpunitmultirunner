@@ -1,53 +1,63 @@
 <?php
+namespace bublak\phpunitmultirunner;
+
+require 'vendor/autoload.php';
+
+use bublak\phpunitmultirunner\Engines\Timer;
+use bublak\phpunitmultirunner\Engines\Basic;
+use bublak\phpunitmultirunner\Engines\Multiprocess;
+use bublak\phpunitmultirunner\Engines\Executors\Exec;
+use bublak\phpunitmultirunner\Engines\Executors\Printer;
+use bublak\phpunitmultirunner\Tree\Sorters\Basic as BasicSorter;
+use bublak\phpunitmultirunner\Tree\Creator;
 
 
-$startBasic = new Basic();
-$startBasic->run();
+// *****************  ONE PROCESS  *********************
+echo "\n\n ONE PROCESS \n";
+///*
+$path = $_SERVER['PWD'] . Settings::FOLDER_SEPARATOR . 'tests_for_tests';
+$sorter = new BasicSorter();
+$creator = new Creator($path, $sorter);
 
+echo "\ncreate file trees: \n";
+echo date('i:s', time());
+$tests = $creator->getTreeArray();
 
-class Basic {
+echo "created file trees: \n";
+echo "running tests: \n";
+echo date('i:s', time());
 
-    public function run() {
-        $folder = $_SERVER['PWD'] . EnvSettings::FOLDER_SEPARATOR . EnvSettings::FOLDER;
+$basicEngine = new Basic(new Exec(), new Timer());
+$results = $basicEngine->runUnits($tests, array());
 
-        $engine = new BasicEngine();
+//var_dump($results);
 
-        $mprunner = new Mprunner($engine, $folder);
-        $mprunner->run();
-    }
-}
+echo "\nfinished tests \n";
+echo date('i:s', time());
+//*/
 
-class Mpu {
+// *****************  MULTIPROCESS *********************
+echo "\n\n MULTIPROCESS \n";
 
-    private $_path   = '';
-    private $_engine = null;
+///*
+$path = $_SERVER['PWD'] . Settings::FOLDER_SEPARATOR . 'tests_for_tests';
+$sorter = new BasicSorter(3);
+$creator = new Creator($path, $sorter);
 
-    // todo interface Engine
-    public function __construct($engine, $folder) {
-        $this->_path = $folder;
-        $this->_engine = $engine;
-    }
+echo "\ncreate file trees: \n";
+echo date('i:s', time());
+$tests = $creator->getTreeArray();
 
-    public function run() {
-        echo "\ncreate file trees: \n";
-        echo date('i:s', time());
+echo "created file trees: \n";
+echo "running tests: \n";
+echo date('i:s', time());
 
-        $tree = new Mputree($this->_path);
+$bootstraps = array('bootstraps' => array('aa', 'bb', 'cc'));
+$multiEngine = new Multiprocess(new Exec(), new Timer());
+$results = $multiEngine->runUnits($tests, $bootstraps);
 
-        $this->_prepareFileTree($this->_path, $tree);
+//var_dump($results);
 
-        $this->_preprocessTree($tree);
-
-        $tests = $this->_getTestsArray($tree, false);
-
-        echo "created file trees: \n";
-        echo "running tests: \n";
-        echo date('i:s', time());
-
-        $this->_engine->runUnits($tests);
-
-        echo "\nfinished tests \n";
-        echo date('i:s', time());
-    }
-
-}
+echo "\nfinished tests \n";
+echo date('i:s', time());
+//*/

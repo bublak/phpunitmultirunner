@@ -24,7 +24,9 @@ abstract class AbstractEngine implements IEngine {
     }
 
     public function execTest($name, $identificator, &$results) {
-        $command = escapeshellcmd('phpunit '. $name);
+        // TODO -> put in config
+        //$command = escapeshellcmd('phpunit '. $name);
+        $command = escapeshellcmd('vendor/bin/phpunit '. $name);
 
         $result = array();
 

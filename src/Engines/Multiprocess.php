@@ -39,7 +39,7 @@ class Multiprocess extends AbstractEngine
             $pid = pcntl_fork();
 
             if (!$pid) {
-                $result = parent::runUnits($testChunk, array());
+                $result = parent::runUnits($testChunk, null);
 
                 $fileHandler = fopen($file, 'r+');
 

@@ -54,7 +54,7 @@ class Creator {
         return $tree->save($file);
     }
 
-    private function _sortTestsForProcesses($tests) {
+    private function _sortTestsForProcesses(&$tests) {
         if (!is_null($this->_sorter)) {
             $this->_sorter->sort($tests);
         }

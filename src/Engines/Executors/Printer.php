@@ -4,7 +4,7 @@ namespace bublak\phpunitmultirunner\Engines\Executors;
 class Printer implements IExecutor {
 
     public function execTest($command, array &$result) {
-        echo ($command);
+        echo ($command . "\n");
         $result = array('OK');
     }
 }

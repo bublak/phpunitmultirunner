@@ -3,7 +3,7 @@ namespace bublak\phpunitmultirunner\Engines\Executors;
 
 class Exec implements IExecutor {
 
-    public function execCommand($command, &$result) {
+    public function execTest($command, array &$result) {
         exec($command, $result);
     }
 }
